@@ -1,0 +1,138 @@
+--CREATE DATABASE COVIDProject
+
+/*
+SELECT * 
+FROM COVID_Deaths
+WHERE continent IS NOT NULL
+ORDER BY 3,4
+
+SELECT *
+FROM COVID_Vaccinations
+ORDER BY 3, 4
+
+*/
+
+-- Select Data to use
+
+/*
+SELECT location, date, total_Cases, new_cases, total_deaths, population
+FROM COVIDProject..COVID_Deaths
+ORDER BY 1, 2
+*/
+
+-- Observe Total cases vs total deaths
+
+SELECT location, date, total_cases, total_deaths, (total_deaths/total_cases)*100 AS Death_Percentage
+FROM COVIDProject..COVID_Deaths
+WHERE location like '%Japan%'
+order by 1,2
+
+-- Looking at total cases vs population
+-- In Japan
+SELECT location, date, total_cases, population, (total_cases/Population)*100 AS Percent_Infected
+FROM COVIDProject..COVID_Deaths
+WHERE location LIKE 'Japan'
+ORDER BY 1, 2
+-- In US
+SELECT location, date, total_cases, population, (total_cases/Population)*100 AS Percent_Infected
+FROM COVIDProject..COVID_Deaths
+WHERE location LIKE '%States%'
+ORDER BY 1, 2
+
+-- Looking at countries with highest infection rate compared to population
+SELECT location, population, MAX(total_cases) AS Highest_Infection_Count, MAX((total_cases/Population))*100 AS Percent_Infected
+FROM COVIDProject..COVID_Deaths
+WHERE total_cases IS NOT NULL AND Population IS NOT NULL
+GROUP BY location, population
+ORDER BY Percent_Infected DESC
+
+--Showing countries with highest death rate
+SELECT location, total_cases, MAX(total_deaths) AS Total_Death_Count, MAX((total_deaths/total_cases))*100 AS Death_Percentage
+FROM COVIDProject..COVID_Deaths
+WHERE total_deaths IS NOT NULL AND Population IS NOT NULL AND continent IS NOT NULL
+GROUP BY location, total_cases
+ORDER BY Death_Percentage DESC
+
+-- Show continents with highest death count
+SELECT continent, MAX(cast(Total_deaths as int)) as Total_Death_Count
+FROM COVIDProject..COVID_Deaths
+WHERE continent IS NOT NULL
+GROUP BY continent
+ORDER BY Total_Death_Count DESC
+
+
+
+-- Global Numbers
+
+SELECT SUM(new_cases) as total_cases, SUM(new_deaths) as total_deaths, SUM(total_deaths)/sum(total_cases)*100 AS Death_Percentage
+FROM COVIDProject..COVID_Deaths
+WHERE continent IS NOT NULL
+--GROUP BY date
+ORDER BY 1, 2
+
+
+-- Looking at Total Population vs. Vaccination
+SELECT dea.continent, dea.location, dea.date, dea.population, vac.new_vaccinations,
+SUM(vac.new_vaccinations) OVER (PARTITION BY dea.location ORDER BY dea.location, dea.date) AS People_Vaccinated_Rolling --the date separates it out
+FROM COVIDProject..COVID_Deaths dea
+JOIN COVIDProject..COVID_Vaccinations vac
+    ON dea.location = vac.location 
+    AND dea.date = vac.date
+WHERE dea.continent IS NOT NULL
+ORDER BY 2, 3
+
+--USE CTE
+WITH PopulationVSVaccination (Continent, location, date, population, new_vaccinations, People_Vaccinated_Rolling) AS
+(
+SELECT dea.continent, dea.location, dea.date, dea.population, vac.new_vaccinations,
+SUM(vac.new_vaccinations) OVER (PARTITION BY dea.location ORDER BY dea.location, dea.date) AS People_Vaccinated_Rolling --the date separates it out
+FROM COVIDProject..COVID_Deaths dea
+JOIN COVIDProject..COVID_Vaccinations vac
+    ON dea.location = vac.location 
+    AND dea.date = vac.date
+WHERE dea.continent IS NOT NULL
+--ORDER BY 2, 3
+)
+
+SELECT *, (People_Vaccinated_Rolling/population) * 100  AS Rolling_Percentage_Vaccinated FROM PopulationVSVaccination
+
+--Temp table
+
+DROP TABLE IF EXISTS #PercentPopulationVaccinated
+
+create table #PercentPopulationVaccinated
+(
+    Continent nvarchar(255),
+    Location nvarchar(255),
+    Date datetime,
+    Population numeric,
+    New_Vaccinations numeric,
+    Rolling_People_Vaccinated numeric
+)
+
+INSERT INTO #PercentPopulationVaccinated
+SELECT dea.continent, dea.location, dea.date, dea.population, vac.new_vaccinations,
+SUM(vac.new_vaccinations) OVER (PARTITION BY dea.location ORDER BY dea.location, dea.date) AS People_Vaccinated_Rolling --the date separates it out
+FROM COVIDProject..COVID_Deaths dea
+JOIN COVIDProject..COVID_Vaccinations vac
+    ON dea.location = vac.location 
+    AND dea.date = vac.date
+WHERE dea.continent IS NOT NULL
+--ORDER BY 2, 3
+
+SELECT *, (Rolling_People_Vaccinated/Population) * 100
+FROM #PercentPopulationVaccinated 
+
+-- Creating view to store data for later visualizations
+
+CREATE VIEW PercentPopulationVaccinated AS
+SELECT dea.continent, dea.location, dea.date, dea.population, vac.new_vaccinations,
+SUM(vac.new_vaccinations) OVER (PARTITION BY dea.location ORDER BY dea.location, dea.date) AS People_Vaccinated_Rolling --the date separates it out
+FROM COVIDProject..COVID_Deaths dea
+JOIN COVIDProject..COVID_Vaccinations vac
+    ON dea.location = vac.location 
+    AND dea.date = vac.date
+WHERE dea.continent IS NOT NULL
+
+SELECT *
+FROM #PercentPopulationVaccinated
