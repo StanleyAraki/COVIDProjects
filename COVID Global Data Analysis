@@ -1,0 +1,54 @@
+-- Answering more complex Questions
+
+
+SELECT * FROM COVIDProject..COVID_Deaths;
+SELECT * FROM COVIDProject..COVID_Vaccinations;
+
+-- Is the overall observed cases of COVID increasing or decreasing globally?
+
+SELECT location, date, new_cases 
+FROM COVIDProject..COVID_Deaths
+WHERE continent IS NOT NULL
+
+
+-- Is there a correlation between HDI and COVID 19 virus death rate?
+
+SELECT deaths.location, MAX(vac.human_development_index) AS HDI, MAX(deaths.total_deaths) AS total_deaths
+FROM COVIDProject..COVID_Deaths deaths
+JOIN COVIDProject..COVID_Vaccinations vac
+    ON deaths.location = vac.location
+WHERE deaths.continent IS NOT NULL
+GROUP BY deaths.location
+ORDER BY 1, 2;
+
+-- This result shows the correlation as a 2D graph. (HDI, Deaths)
+
+-- Shows the same result but instead depicts death as a percentage(death percentage)
+
+SELECT deaths.location, MAX(vac.human_development_index) AS HDI, (MAX(deaths.total_deaths))/MAX(deaths.total_cases) AS Death_Percentage
+FROM COVIDProject..COVID_Deaths deaths
+JOIN COVIDProject..COVID_Vaccinations vac
+    ON deaths.location = vac.location
+WHERE deaths.continent IS NOT NULL
+GROUP BY deaths.location
+ORDER BY 1, 2
+
+-- Daily global cases, deaths, vaccinations
+
+SELECT death.date, SUM(death.total_cases) AS Total_Global_Cases, SUM(death.total_deaths) AS Total_Global_Deaths, SUM(vac.total_vaccinations) as Total_Global_Vaccinations
+FROM COVIDProject..COVID_Deaths death, COVIDProject..COVID_Vaccinations vac
+WHERE death.continent IS NOT NULL
+GROUP BY death.date
+ORDER BY death.date; -- Should work but PC can't run it. 
+
+SELECT date, SUM(total_cases) AS Total_Global_Cases, SUM(total_deaths) AS Total_Global_Deaths
+FROM COVIDProject..COVID_Deaths
+WHERE continent IS NOT NULL
+GROUP BY date
+ORDER BY date;
+
+SELECT SUM(total_vaccinations) AS Total_Global_Vaccinations
+FROM COVIDProject..COVID_Vaccinations
+WHERE continent IS NOT NULL
+GROUP BY date
+ORDER BY date
