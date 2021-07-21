@@ -46,7 +46,7 @@ FROM COVIDProject..COVID_Deaths
 WHERE continent IS NOT NULL
 GROUP BY date
 ORDER BY date;
-
+UNION
 SELECT SUM(total_vaccinations) AS Total_Global_Vaccinations
 FROM COVIDProject..COVID_Vaccinations
 WHERE continent IS NOT NULL
